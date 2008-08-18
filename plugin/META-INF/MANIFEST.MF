@@ -1,0 +1,20 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Zoodiac Plug-in
+Bundle-SymbolicName: com.zorzella.eclipse.zoodiac;singleton:=true
+Bundle-Version: 1.0.6
+Bundle-Activator: com.google.zoodiac.ZoodiacPluginActivator
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ org.eclipse.core.resources,
+ org.eclipse.jdt,
+ org.eclipse.jdt.core.manipulation,
+ org.eclipse.jdt.ui,
+ org.eclipse.jdt.core,
+ org.eclipse.jface.text,
+ org.eclipse.ui.workbench.texteditor,
+ org.eclipse.core.filebuffers,
+ org.eclipse.ui.editors,
+ org.eclipse.ltk.core.refactoring
+Eclipse-LazyStart: true
+Bundle-Vendor: Luiz-Otavio Zorzella

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+
+   <extension
+         point="org.eclipse.ui.startup">
+         <startup class="com.google.zoodiac.refreshnow.RefreshNowStartup"/>
+   </extension>
+
+   <extension
+         point="org.eclipse.ui.commands">
+      <category
+            name="Zfactor"
+            id="changevisibility.commands.category" />
+      <command
+            name="Increase Visibility (of method or field)"
+            categoryId="changevisibility.commands.category"
+            id="changevisibility.commands.increaseVisibility" />
+      <command
+            name="Decrease Visibility (of method or field)"
+            categoryId="changevisibility.commands.category"
+            id="changevisibility.commands.decreaseVisibility" />
+      <command
+            name="Add 'private final'"
+            categoryId="changevisibility.commands.category"
+            id="changevisibility.commands.addConstructorParameter" />
+   </extension>
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            commandId="changevisibility.commands.increaseVisibility"
+            class="com.google.zoodiac.sourcemenu.ChangeVisibilityHandler$IncreaseVisibilityHandler" />
+      <handler
+            commandId="changevisibility.commands.decreaseVisibility"
+            class="com.google.zoodiac.sourcemenu.ChangeVisibilityHandler$DecreaseVisibilityHandler" />
+      <handler
+            commandId="changevisibility.commands.addConstructorParameter"
+            class="com.google.zoodiac.sourcemenu.AddPrivateFinalHandler" />
+   </extension>
+   <extension
+         point="org.eclipse.ui.bindings">
+      <key
+            commandId="changevisibility.commands.increaseVisibility"
+            contextId="org.eclipse.ui.contexts.window"
+            sequence="M1+M2+="
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration" />
+      <key
+            commandId="changevisibility.commands.decreaseVisibility"
+            contextId="org.eclipse.ui.contexts.window"
+            sequence="M1+M2+-"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration" />
+      <key
+            commandId="changevisibility.commands.addConstructorParameter"
+            contextId="org.eclipse.ui.contexts.window"
+            sequence="M1+M2+Z F"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration" />
+   </extension>
+   
+   <extension
+         point="org.eclipse.ui.menus">
+<!--      <menuContribution
+            locationURI="menu:org.eclipse.ui.main.menu?before=org.eclipse.jdt.ui.refactoring.menu">
+         <menu
+               label="Source"
+               mnemonic="S"
+               id="org.eclipse.jdt.ui.source.menu" />
+      </menuContribution>
+      <menuContribution
+            locationURI="menu:org.eclipse.jdt.ui.source.menu?after=additions">
+            -->
+     <menuContribution
+            locationURI="menu:org.eclipse.ui.main.menu?after=additions">
+         <menu
+               label="Zoodiac"
+               mnemonic="Z"
+               id="changevisibility.menus.zoodiac">
+            <command
+                  commandId="changevisibility.commands.increaseVisibility"
+                  mnemonic="I"
+                  id="changevisibility.menus.increaseVisibility" />
+            <command
+                  commandId="changevisibility.commands.decreaseVisibility"
+                  mnemonic="D"
+                  id="changevisibility.menus.decreaseVisibility" />
+            <command
+                  commandId="changevisibility.commands.addConstructorParameter"
+                  mnemonic="A"
+                  id="changevisibility.menus.addConstructorParameter" />
+         </menu>
+      </menuContribution>
+   </extension>
+</plugin>
