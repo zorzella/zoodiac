@@ -18,11 +18,16 @@ import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.AnnotationTypeDeclaration;
 import org.eclipse.jdt.core.dom.ChildListPropertyDescriptor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.EnumDeclaration;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
+import org.eclipse.jdt.core.dom.MarkerAnnotation;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.Modifier;
+import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
@@ -148,25 +153,62 @@ public class ChangeVisibilityHandler extends AbstractHandler {
     }
   }
 
-  // private static final class ListRewriteAcquirerForType implements
-  // ListRewriteAcquirer {
-  // private final TypeDeclaration field;
-  //
-  // public ListRewriteAcquirerForType(TypeDeclaration field) {
-  // this.field = field;
-  // }
-  //
-  //
-  // @Override
-  // public ChildListPropertyDescriptor getPropertyKey() {
-  // return TypeDeclaration.MODIFIERS2_PROPERTY;
-  // }
-  //
-  // @Override
-  // public ASTNode getASTNode() {
-  // return field;
-  // }
-  // }
+  private static final class ListRewriteAcquirerForType implements
+      ListRewriteAcquirer {
+    private final TypeDeclaration field;
+
+    public ListRewriteAcquirerForType(TypeDeclaration field) {
+      this.field = field;
+    }
+
+    @Override
+    public ChildListPropertyDescriptor getPropertyKey() {
+      return TypeDeclaration.MODIFIERS2_PROPERTY;
+    }
+
+    @Override
+    public ASTNode getASTNode() {
+      return field;
+    }
+  }
+
+  private static final class ListRewriteAcquirerForEnumDeclaration implements
+      ListRewriteAcquirer {
+    private final EnumDeclaration field;
+
+    public ListRewriteAcquirerForEnumDeclaration(EnumDeclaration enumDeclaration) {
+      this.field = enumDeclaration;
+    }
+
+    @Override
+    public ChildListPropertyDescriptor getPropertyKey() {
+      return EnumDeclaration.MODIFIERS2_PROPERTY;
+    }
+
+    @Override
+    public ASTNode getASTNode() {
+      return field;
+    }
+  }
+
+  private static final class ListRewriteAcquirerForAnnotationTypeDeclaration implements
+      ListRewriteAcquirer {
+    private final AnnotationTypeDeclaration field;
+
+    public ListRewriteAcquirerForAnnotationTypeDeclaration(AnnotationTypeDeclaration field) {
+      this.field = field;
+    }
+
+    @Override
+    public ChildListPropertyDescriptor getPropertyKey() {
+      return AnnotationTypeDeclaration.MODIFIERS2_PROPERTY;
+    }
+
+    @Override
+    public ASTNode getASTNode() {
+      return field;
+    }
+  }
 
   /**
    * the command has been executed, so extract extract the needed information
@@ -281,7 +323,15 @@ public class ChangeVisibilityHandler extends AbstractHandler {
     List<?>/* either <Modifier> or <MarkerAnnotation> */ originalModifiers = 
       listRewrite.getOriginalList();
     ModifierKeyword foundModifier = null;
-    for (Object temp : originalModifiers) {
+    int lastIndexOfMarker = -1;
+    int indexOfOriginalModifier = -1;
+    int countRemovedSoFar = 0;
+    for (int i = 0; i < originalModifiers.size(); i++) {
+      Object temp = originalModifiers.get(i);
+      if (temp instanceof MarkerAnnotation) {
+        lastIndexOfMarker = i - countRemovedSoFar;
+        continue;
+      }
       if (!(temp instanceof Modifier)) {
         continue;
       }
@@ -290,13 +340,16 @@ public class ChangeVisibilityHandler extends AbstractHandler {
       if (VISIBILITY_MODS.contains(originalModifierKeyword)) {
         listRewrite.remove(originalModifier, null);
         foundModifier = originalModifierKeyword;
+        indexOfOriginalModifier = i;
+        countRemovedSoFar++;
       }
     }
     ModifierKeyword newModifierKeyWord = modifierFor(foundModifier);
 
     if (newModifierKeyWord != null) {
       ASTNode newModifier = astRewrite.getAST().newModifier(newModifierKeyWord);
-      listRewrite.insertFirst(newModifier, null);
+      listRewrite.insertAt(newModifier,
+          (indexOfOriginalModifier != -1) ? indexOfOriginalModifier : lastIndexOfMarker + 1, null);
     } // else we're making it package protected
 
     IDocument document =
@@ -350,12 +403,16 @@ public class ChangeVisibilityHandler extends AbstractHandler {
       if (temp instanceof FieldDeclaration) {
         return new ListRewriteAcquirerForField((FieldDeclaration) temp);
       }
-      // TODO this does not work, cuz getOriginalList returns a
-      // List<SingleMemberAnnotation>, and that's completely different from
-      // Modifiers
-      // if (temp instanceof TypeDeclaration) {
-      // return new ListRewriteAcquirerForType((TypeDeclaration) temp);
-      // }
+      if (temp instanceof TypeDeclaration) {
+        return new ListRewriteAcquirerForType((TypeDeclaration) temp);
+      }
+      if (temp instanceof EnumDeclaration) {
+        return new ListRewriteAcquirerForEnumDeclaration((EnumDeclaration) temp);
+      }
+      if (temp instanceof AnnotationTypeDeclaration) {
+        return new ListRewriteAcquirerForAnnotationTypeDeclaration(
+            (AnnotationTypeDeclaration) temp);
+      }
       temp = temp.getParent();
       if (temp == null) {
         return null;

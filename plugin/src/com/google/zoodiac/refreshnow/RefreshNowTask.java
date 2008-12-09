@@ -38,7 +38,14 @@ class RefreshNowTask extends TimerTask {
   @Override
   public synchronized void run() {
     try {
-      IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+      IWorkspaceRoot root;
+
+      try {
+        root = ResourcesPlugin.getWorkspace().getRoot();
+      } catch (IllegalStateException e) {
+        // The workspace has been closed (i.e. Eclipse is exiting). Ignoring it.
+        return;
+      }
 
       File shutdownNow = 
         new File (new File(root.getLocationURI()), "shutdownnow");

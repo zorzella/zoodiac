@@ -19,32 +19,35 @@ package com.google.zoodiac.sourcemenu;
  * 
  * @author zorzella
  */
-public class /* BUG -- should work with classes */ ChangeVisibilityTarget {
+public class /* TARGET */ ChangeVisibilityTarget {
   
-  public static class /* BUG -- should work with classes */ Foo {
+  protected static class /* TARGET */ Foo {
     
-    protected String /* TARGET */ baz;
+    String /* TARGET */ baz;
     
     protected void /* TARGET */ a () {}
 
     protected 
-    void /* TARGET (make sure to leave this split in 5 lines) */ 
+    void /* TARGET (BUG make sure to leave this split in 5 lines) */ 
     b 
     () 
     {}
 
     protected static void /* TARGET */ d () {}
 
-    static protected void /* BUG -- changes the order when it's "static protected" rather than "protected static" */ e () {}
+    static private void /* BUG -- when default visibility, does not preserve the "static protected" order */ e () {}
 
     @Deprecated
-    public void /* BUG -- it messes with formatting/order */ c () {}
-  
+    protected void /* TARGET */ foo () {}
   }
 
 }
 
-/* BUG -- should work with classes */
-class Bar {
-  
-}
+class /* TARGET */ Bar {}
+
+interface /* TARGET */ Biz {}
+
+enum /* TARGET */ Baz {}
+
+@interface /* TARGET */ Zoo {}
+
