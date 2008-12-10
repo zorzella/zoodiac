@@ -37,7 +37,7 @@ import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
 import org.eclipse.jdt.internal.corext.dom.NodeFinder;
-import org.eclipse.jdt.internal.corext.refactoring.changes.CompilationUnitChange;
+//import org.eclipse.jdt.internal.corext.refactoring.changes.CompilationUnitChange;
 import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.jdt.internal.ui.javaeditor.ASTProvider;
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
@@ -393,11 +393,11 @@ public class AddPrivateFinalHandler extends AbstractHandler {
       }
 
 
-      TextChange textChange =
-          new CompilationUnitChange("blar", compilationUnit);
+//      TextChange textChange =
+//          new CompilationUnitChange("blar", compilationUnit);
 
       MultiTextEdit multiTextEdit = new MultiTextEdit();
-      textChange.setEdit(multiTextEdit);
+//      textChange.setEdit(multiTextEdit);
 
       IDocument document =
           JavaUI.getDocumentProvider().getDocument(

@@ -34,7 +34,7 @@ import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
 import org.eclipse.jdt.internal.core.JavaElement;
 import org.eclipse.jdt.internal.corext.dom.Selection;
 import org.eclipse.jdt.internal.corext.dom.SelectionAnalyzer;
-import org.eclipse.jdt.internal.corext.refactoring.changes.CompilationUnitChange;
+//import org.eclipse.jdt.internal.corext.refactoring.changes.CompilationUnitChange;
 import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
 import org.eclipse.jdt.internal.ui.javaeditor.EditorUtility;
@@ -284,10 +284,10 @@ public class ChangeVisibilityHandler extends AbstractHandler {
           astRewrite.getListRewrite(nodeToOperateOn, listRewriteAcquirer
               .getPropertyKey());
 
-      TextChange textChange =
-          new CompilationUnitChange("blar", compilationUnit);
+//      TextChange textChange =
+//          new CompilationUnitChange("blar", compilationUnit);
       MultiTextEdit multiTextEdit = new MultiTextEdit();
-      textChange.setEdit(multiTextEdit);
+//      textChange.setEdit(multiTextEdit);
       multiTextEdit.addChild(changeVisibility(listRewrite,
           targetCompilationUnitEditor, astRewrite));
       // TODO duplicated
