@@ -22,14 +22,22 @@ package com.google.zoodiac.sourcemenu;
  */
 public class PrivateFinalTarget {
 
+  public class Foo {
+    public Foo() {
+    }
+  }
+  
   class Baz {
     /* TARGET */
   }
   
+  /* TARGET */
+  
   public PrivateFinalTarget() {
+    /* TARGET */
   }
   
-  /* TARGET */
+  /* TARGET - QUIRK this ends up being applied to "Bar" */
 
   class Bar {
      /* TARGET */
