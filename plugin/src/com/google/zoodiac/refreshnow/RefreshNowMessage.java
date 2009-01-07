@@ -28,7 +28,7 @@ import java.net.URL;
 class RefreshNowMessage implements Runnable {
 
   static final String PNG_NAME = "z.png";
-  static final String PLUGIN_NAME = "com.zorzella.eclipse.refreshnow";
+  static final String PLUGIN_NAME = "com.google.zoodiac";
 
   private String ballonTitle;
   private String message;
