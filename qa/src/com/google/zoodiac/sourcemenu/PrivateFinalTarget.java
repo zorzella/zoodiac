@@ -43,5 +43,12 @@ public class PrivateFinalTarget {
      /* TARGET */
   }
   
+  class Zee {
+    /* BUG -- when the constructor has a varargs, we should add the 
+     * new param before the varargs param */
+    Zee (String... foo) {
+    }
+  }
+  
 }
 
