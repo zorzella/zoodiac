@@ -96,6 +96,7 @@ class RefreshNowTask extends TimerTask {
     
       public void run() {
         IWorkbench workbench = PlatformUI.getWorkbench();
+        workbench.saveAllEditors(false);
         workbench.close();
       }
     };
