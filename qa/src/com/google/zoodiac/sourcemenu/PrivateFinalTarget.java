@@ -11,6 +11,10 @@
  *******************************************************************************/
 package com.google.zoodiac.sourcemenu;
 
+/* BUG */
+
+/* BUG note to self -- take care of requesting team permission to modify file */
+
 /**
  * Use this class for manually QA-ing the "add private final" functionality. 
  * 
