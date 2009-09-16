@@ -47,11 +47,20 @@ class RefreshNowTask extends TimerTask {
         return;
       }
 
-      File shutdownNow = 
+      final File shutdownNowWorkspace = 
         new File (new File(root.getLocationURI()), "shutdownnow");
       
-      if (shutdownNow.delete()) {
-        shutdownnow();
+      if (shutdownNowWorkspace.exists()) {
+        if (shutdownNowWorkspace.exists()) {
+          Thread deleteShutdownnowFile = new Thread(new Runnable() {
+            @Override
+            public void run() {
+              shutdownNowWorkspace.delete();
+            }
+          });
+          Runtime.getRuntime().addShutdownHook(deleteShutdownnowFile);
+          shutdownnow(shutdownNowWorkspace);
+        }
       } else {
         IProject[] projects = root.getProjects();
         for (IProject project : projects) {
@@ -60,9 +69,16 @@ class RefreshNowTask extends TimerTask {
           if (refreshNow.delete()) {
             refreshnow(project);
           } else {
-            shutdownNow = new File(uri, "shutdownnow");
-            if (shutdownNow.delete()) {
-              shutdownnow();
+            final File shutdownNow = new File(uri, "shutdownnow");
+            if (shutdownNow.exists()) {
+              Thread deleteShutdownnowFile = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                  shutdownNow.delete();
+                }
+              });
+              Runtime.getRuntime().addShutdownHook(deleteShutdownnowFile);
+              shutdownnow(shutdownNow);
             }
           }
         }
@@ -88,8 +104,9 @@ class RefreshNowTask extends TimerTask {
     displayMessage(balloonTitle, REFRESH_NOW_COMPLETED_MESSAGE, true);
   }
 
-  private void shutdownnow() {
+  private void shutdownnow(File shutdownNow) {
     if (firstTime) {
+      shutdownNow.delete();
       return;
     }
     Runnable shutdownRunnable = new Runnable() {

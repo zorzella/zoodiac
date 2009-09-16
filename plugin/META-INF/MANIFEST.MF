@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Zoodiac Plug-in
 Bundle-SymbolicName: com.google.zoodiac;singleton:=true
-Bundle-Version: 2.0.1.qualifier
+Bundle-Version: 2.1.1.qualifier
 Bundle-Activator: com.google.zoodiac.ZoodiacPluginActivator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,

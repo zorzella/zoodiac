@@ -2,7 +2,7 @@
 <feature
       id="com.google.zoodiac"
       label="Zoodiac"
-      version="2.0.1.qualifier">
+      version="2.1.0.qualifier">
 
    <description url="http://zoodiac.googlecode.com">
       Useful extensions to Eclipse.
