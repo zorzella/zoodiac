@@ -33,6 +33,9 @@ public class PrivateFinalTarget {
   
   class Baz {
     /* TARGET */
+    
+    void some(){}
+    
   }
   
   /* TARGET */
@@ -48,8 +51,7 @@ public class PrivateFinalTarget {
   }
   
   class Zee {
-    /* BUG -- when the constructor has a varargs, we should add the 
-     * new param before the varargs param */
+    /* TARGET */
     Zee (String... foo) {
     }
   }

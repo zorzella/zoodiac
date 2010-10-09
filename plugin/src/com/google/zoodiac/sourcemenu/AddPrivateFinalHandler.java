@@ -37,7 +37,6 @@ import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
 import org.eclipse.jdt.internal.corext.dom.NodeFinder;
-//import org.eclipse.jdt.internal.corext.refactoring.changes.CompilationUnitChange;
 import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.jdt.internal.ui.javaeditor.ASTProvider;
 import org.eclipse.jdt.internal.ui.javaeditor.CompilationUnitEditor;
@@ -58,7 +57,6 @@ import org.eclipse.jface.text.link.LinkedPosition;
 import org.eclipse.jface.text.link.LinkedPositionGroup;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.ltk.core.refactoring.TextChange;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.text.edits.MultiTextEdit;
 import org.eclipse.text.edits.TextEdit;
@@ -131,7 +129,7 @@ public class AddPrivateFinalHandler extends AbstractHandler {
     };
     typeNode.accept(visitor);
 
-    FieldDeclaration field = fields.get(fields.size() - 1);
+    FieldDeclaration field = fields.get(0);
     return new Result(constructors, field);
   }
 
@@ -181,8 +179,8 @@ public class AddPrivateFinalHandler extends AbstractHandler {
     return typeNode;
   }
 
-  private static void go(CompilationUnitEditor targetCompilationUnitEditor)
-      throws BadLocationException {
+  private static void setInPlaceEditingOfRecentlyAddedNodes(CompilationUnitEditor targetCompilationUnitEditor)
+      throws ExecutionException {
 
     ASTNode typeNode = getTypeNode(targetCompilationUnitEditor);
 
@@ -213,7 +211,7 @@ public class AddPrivateFinalHandler extends AbstractHandler {
     for (MethodDeclaration constructor : stuff.constructors) {
       @SuppressWarnings("unchecked")
       List<SingleVariableDeclaration> parameters = constructor.parameters();
-      SingleVariableDeclaration param = parameters.get(parameters.size() - 1);
+      SingleVariableDeclaration param = parameters.get(0);
       ASTVisitor parameterVisitor = new ASTVisitor() {
         @Override
         public boolean visit(SingleVariableDeclaration node) {
@@ -244,40 +242,45 @@ public class AddPrivateFinalHandler extends AbstractHandler {
           return false;
         }
       };
-      assignments.get(assignments.size() - 1).accept(assignmentVisitor);
+      assignments.get(0).accept(assignmentVisitor);
     }
 
-    // Set up linking between edit boxes
-    IDocument document =
-        JavaUI.getDocumentProvider().getDocument(
-            targetCompilationUnitEditor.getEditorInput());
-    LinkedPositionGroup typesGroup = new LinkedPositionGroup();
-    for (int i = 0; i < types.size(); i++) {
-      ASTNode elem = types.get(i);
-      typesGroup.addPosition(new LinkedPosition(document, elem
-          .getStartPosition(), elem.getLength(), i));
+    try {
+      // Set up linking between edit boxes
+      IDocument document =
+          JavaUI.getDocumentProvider().getDocument(
+              targetCompilationUnitEditor.getEditorInput());
+      LinkedPositionGroup typesGroup = new LinkedPositionGroup();
+      for (int i = 0; i < types.size(); i++) {
+        ASTNode elem = types.get(i);
+        typesGroup.addPosition(new LinkedPosition(document, elem
+            .getStartPosition(), elem.getLength(), i));
+      }
+      LinkedPositionGroup namesGroup = new LinkedPositionGroup();
+      for (int i = 0; i < names.size(); i++) {
+        ASTNode elem = names.get(i);
+        namesGroup.addPosition(new LinkedPosition(document, elem
+            .getStartPosition(), elem.getLength(), i));
+      }
+      LinkedModeModel model = new LinkedModeModel();
+      model.addGroup(typesGroup);
+      model.addGroup(namesGroup);
+      model.forceInstall();
+      model.addLinkingListener(new EditorHighlightingSynchronizer(
+          targetCompilationUnitEditor));
+      ITextViewer viewer = targetCompilationUnitEditor.getViewer();
+  
+      Point selection = viewer.getSelectedRange();
+      LinkedModeUI ui = new EditorLinkedModeUI(model, viewer);
+      ui.setExitPolicy(new DeleteBlockingExitPolicy(document));
+      Point selectedRange = getPosition(targetCompilationUnitEditor);
+      ui.setExitPosition(viewer, selectedRange.x, selectedRange.y,
+          Integer.MAX_VALUE);
+      ui.enter();
+    } catch (BadLocationException e) {
+      throw new ExecutionException(
+          "Error accessing cursor location in document", e);
     }
-    LinkedPositionGroup namesGroup = new LinkedPositionGroup();
-    for (int i = 0; i < names.size(); i++) {
-      ASTNode elem = names.get(i);
-      namesGroup.addPosition(new LinkedPosition(document, elem
-          .getStartPosition(), elem.getLength(), i));
-    }
-    LinkedModeModel model = new LinkedModeModel();
-    model.addGroup(typesGroup);
-    model.addGroup(namesGroup);
-    model.forceInstall();
-    model.addLinkingListener(new EditorHighlightingSynchronizer(
-        targetCompilationUnitEditor));
-    ITextViewer viewer = targetCompilationUnitEditor.getViewer();
-
-    Point selection = viewer.getSelectedRange();
-    LinkedModeUI ui = new EditorLinkedModeUI(model, viewer);
-    ui.setExitPolicy(new DeleteBlockingExitPolicy(document));
-    Point selectedRange = getPosition(targetCompilationUnitEditor);
-    ui.setExitPosition(viewer, selectedRange.x, selectedRange.y,
-        Integer.MAX_VALUE);
-    ui.enter();
   }
 
   /**
@@ -288,12 +291,56 @@ public class AddPrivateFinalHandler extends AbstractHandler {
   @SuppressWarnings("unchecked")
   public Object execute(ExecutionEvent event) throws ExecutionException {
     try {
-      IWorkbenchWindow window =
-          HandlerUtil.getActiveWorkbenchWindowChecked(event);
-      IWorkbenchPart activePart = window.getActivePage().getActivePart();
-      IEditorPart editor = window.getActivePage().getActiveEditor();
-      IWorkingCopyManager manager =
-          JavaPlugin.getDefault().getWorkingCopyManager();
+      CompilationUnitEditor targetCompilationUnitEditor =
+          findTargetCompilationUnitEditor(event);
+
+      // Find the containing class.
+      AbstractTypeDeclaration typeNode = getTypeNode(targetCompilationUnitEditor);
+
+      // Common info
+      AST ast = typeNode.getRoot().getAST();
+      ASTRewrite astRewrite = ASTRewrite.create(ast);
+
+      int positionOfLastMemberFieldFound = addMemberField(typeNode, ast, astRewrite);
+      addOrChangeConstructors(typeNode, ast, astRewrite, positionOfLastMemberFieldFound);
+
+      MultiTextEdit multiTextEdit = new MultiTextEdit();
+
+      IDocument document =
+          JavaUI.getDocumentProvider().getDocument(
+              targetCompilationUnitEditor.getEditorInput());
+      TextEdit edit = astRewrite.rewriteAST(document, null);
+      multiTextEdit.addChild(edit);
+
+      IUndoManager undoManager =
+          ((TextViewer) targetCompilationUnitEditor.getViewer())
+              .getUndoManager();
+      undoManager.beginCompoundChange();
+      multiTextEdit.apply(document);
+      undoManager.endCompoundChange();
+      
+      setInPlaceEditingOfRecentlyAddedNodes(targetCompilationUnitEditor);
+      
+    } catch (BadLocationException e) {
+      throw new ExecutionException(
+          "Error accessing cursor location in document", e);
+    }
+
+    return null;
+  }
+
+  /**
+   */
+  private CompilationUnitEditor findTargetCompilationUnitEditor(
+      ExecutionEvent event) throws ExecutionException {
+    IWorkbenchWindow window =
+      HandlerUtil.getActiveWorkbenchWindowChecked(event);
+    IWorkbenchPart activePart = window.getActivePage().getActivePart();
+    IEditorPart editor = window.getActivePage().getActiveEditor();
+    IWorkingCopyManager manager =
+      JavaPlugin.getDefault().getWorkingCopyManager();
+
+    try {
       CompilationUnitEditor targetCompilationUnitEditor = null;
       ICompilationUnit compilationUnit = null;
       if (editor == activePart) {
@@ -327,99 +374,75 @@ public class AddPrivateFinalHandler extends AbstractHandler {
           }
         }
       }
-
-
-
-      ITextViewer viewer = targetCompilationUnitEditor.getViewer();
-      Point seletion = viewer.getSelectedRange();
-
-
-      // Find the containing type.
-      AbstractTypeDeclaration typeNode =
-          getTypeNode(targetCompilationUnitEditor);
-
-      // Common info
-      AST ast = typeNode.getRoot().getAST();
-      ASTRewrite astRewrite = ASTRewrite.create(ast);
-
-      // Construct a member variable declaration.
-      SimpleName varType = ast.newSimpleName(CREATED_VARIABLE_TYPE);
-      SimpleName varName = ast.newSimpleName(CREATED_VARIABLE_NAME);
-      SimpleType variableType = ast.newSimpleType(varType);
-      VariableDeclarationFragment vdf = ast.newVariableDeclarationFragment();
-      vdf.setName(varName);
-      FieldDeclaration fieldDeclaration = ast.newFieldDeclaration(vdf);
-      fieldDeclaration.modifiers().add(
-          ast.newModifier(ModifierKeyword.PRIVATE_KEYWORD));
-      fieldDeclaration.modifiers().add(
-          ast.newModifier(ModifierKeyword.FINAL_KEYWORD));
-      fieldDeclaration.setType(variableType);
-      ListRewrite listRewrite =
-          astRewrite.getListRewrite(typeNode, typeNode
-              .getBodyDeclarationsProperty());
-      List<Object> originalList = listRewrite.getOriginalList();
-      int lastIndex = 0;
-      for (int i = originalList.size() - 1; i >= 0; i--) {
-        final Object node = originalList.get(i);
-        if (node instanceof FieldDeclaration) {
-          lastIndex = i + 1;
-          break;
-        }
-      }
-      listRewrite.insertAt(fieldDeclaration, lastIndex, null);
-
-      List<MethodDeclaration> constructors = findAllConstructors(typeNode);
-
-      // Handle no constructors by creating an empty constructor
-      if (constructors.isEmpty()) {
-        MethodDeclaration constructor =
-            typeNode.getAST().newMethodDeclaration();
-        SimpleName name = ast.newSimpleName(typeNode.getName().getIdentifier());
-        constructor.setName(name);
-        Block body = ast.newBlock();
-        constructor.setBody(body);
-        constructor.setConstructor(true);
-        List modifiers = constructor.modifiers();
-        modifiers.add(ast.newModifier(ModifierKeyword.PUBLIC_KEYWORD));
-        ListRewrite rewrite =
-            astRewrite.getListRewrite(typeNode, typeNode
-                .getBodyDeclarationsProperty());
-        rewrite.insertFirst(constructor, null);
-
-        constructors.add(constructor);
-      }
-      for (MethodDeclaration constructor : constructors) {
-        reWriteConstructor(ast, astRewrite, constructor);
-      }
-
-
-//      TextChange textChange =
-//          new CompilationUnitChange("blar", compilationUnit);
-
-      MultiTextEdit multiTextEdit = new MultiTextEdit();
-//      textChange.setEdit(multiTextEdit);
-
-      IDocument document =
-          JavaUI.getDocumentProvider().getDocument(
-              targetCompilationUnitEditor.getEditorInput());
-      TextEdit edit = astRewrite.rewriteAST(document, null);
-      multiTextEdit.addChild(edit);
-
-      IUndoManager undoManager =
-          ((TextViewer) targetCompilationUnitEditor.getViewer())
-              .getUndoManager();
-      undoManager.beginCompoundChange();
-      multiTextEdit.apply(document);
-      undoManager.endCompoundChange();
-      go(targetCompilationUnitEditor);
-    } catch (BadLocationException e) {
-      throw new ExecutionException(
-          "Error accessing cursor location in document", e);
+      return targetCompilationUnitEditor;
     } catch (PartInitException e) {
       throw new ExecutionException("Could not open editor", e);
     }
+  }
 
-    return null;
+  /**
+   */
+  @SuppressWarnings("unchecked")
+  private void addOrChangeConstructors(
+      AbstractTypeDeclaration typeNode,
+      AST ast,
+      ASTRewrite astRewrite,
+      int positionOfLastMemberFieldFound) {
+    List<MethodDeclaration> constructors = findAllConstructors(typeNode);
+
+    // Handle no constructors by creating an empty constructor
+    if (constructors.isEmpty()) {
+      MethodDeclaration constructor =
+          typeNode.getAST().newMethodDeclaration();
+      SimpleName name = ast.newSimpleName(typeNode.getName().getIdentifier());
+      constructor.setName(name);
+      Block body = ast.newBlock();
+      constructor.setBody(body);
+      constructor.setConstructor(true);
+      List modifiers = constructor.modifiers();
+      modifiers.add(ast.newModifier(ModifierKeyword.PUBLIC_KEYWORD));
+      ListRewrite rewrite =
+          astRewrite.getListRewrite(typeNode, typeNode
+              .getBodyDeclarationsProperty());
+      rewrite.insertAt(constructor, positionOfLastMemberFieldFound + 1, null);
+
+      constructors.add(constructor);
+    }
+    for (MethodDeclaration constructor : constructors) {
+      reWriteConstructor(ast, astRewrite, constructor);
+    }
+  }
+
+  /**
+   */
+  @SuppressWarnings("unchecked")
+  private int addMemberField(AbstractTypeDeclaration typeNode, AST ast, ASTRewrite astRewrite) {
+    // Construct a member variable declaration.
+    SimpleName varType = ast.newSimpleName(CREATED_VARIABLE_TYPE);
+    SimpleName varName = ast.newSimpleName(CREATED_VARIABLE_NAME);
+    SimpleType variableType = ast.newSimpleType(varType);
+    VariableDeclarationFragment vdf = ast.newVariableDeclarationFragment();
+    vdf.setName(varName);
+    FieldDeclaration fieldDeclaration = ast.newFieldDeclaration(vdf);
+    fieldDeclaration.modifiers().add(
+        ast.newModifier(ModifierKeyword.PRIVATE_KEYWORD));
+    fieldDeclaration.modifiers().add(
+        ast.newModifier(ModifierKeyword.FINAL_KEYWORD));
+    fieldDeclaration.setType(variableType);
+    ListRewrite listRewrite =
+        astRewrite.getListRewrite(typeNode, typeNode
+            .getBodyDeclarationsProperty());
+    List<Object> originalList = listRewrite.getOriginalList();
+    int positionOfLastMemberFieldFound = 0;
+    for (int i = originalList.size() - 1; i >= 0; i--) {
+      final Object node = originalList.get(i);
+      if (node instanceof FieldDeclaration) {
+        positionOfLastMemberFieldFound = i + 1;
+        break;
+      }
+    }
+    listRewrite.insertAt(fieldDeclaration, 0, null);
+    return positionOfLastMemberFieldFound;
   }
 
   //TODO: consolidate with findAllConstructorsAndFields?
@@ -448,6 +471,7 @@ public class AddPrivateFinalHandler extends AbstractHandler {
     return constructors;
   }
 
+  @SuppressWarnings("unchecked")
   private void reWriteConstructor(AST ast, ASTRewrite astRewrite,
       MethodDeclaration constructor) {
     SimpleName varType;
@@ -460,11 +484,12 @@ public class AddPrivateFinalHandler extends AbstractHandler {
     variableType = ast.newSimpleType(varType);
     SingleVariableDeclaration svd = ast.newSingleVariableDeclaration();
     svd.setName(varName);
+    svd.modifiers().add(ast.newModifier(ModifierKeyword.FINAL_KEYWORD));
     svd.setType(variableType);
     ListRewrite parametersRewrite =
         astRewrite.getListRewrite(constructor,
             MethodDeclaration.PARAMETERS_PROPERTY);
-    parametersRewrite.insertLast(svd, null);
+    parametersRewrite.insertFirst(svd, null);
 
     // Add an assignment statement
     varName = ast.newSimpleName(CREATED_VARIABLE_NAME);
@@ -479,6 +504,6 @@ public class AddPrivateFinalHandler extends AbstractHandler {
     ExpressionStatement expression = ast.newExpressionStatement(assignment);
     ListRewrite blockRewrite =
         astRewrite.getListRewrite(block, Block.STATEMENTS_PROPERTY);
-    blockRewrite.insertLast(expression, null);
+    blockRewrite.insertFirst(expression, null);
   }
 }
