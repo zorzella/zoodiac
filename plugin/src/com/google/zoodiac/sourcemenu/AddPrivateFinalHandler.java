@@ -28,9 +28,11 @@ import org.eclipse.jdt.core.dom.ExpressionStatement;
 import org.eclipse.jdt.core.dom.FieldAccess;
 import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.Modifier;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.SimpleType;
 import org.eclipse.jdt.core.dom.SingleVariableDeclaration;
+import org.eclipse.jdt.core.dom.SuperConstructorInvocation;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
@@ -104,7 +106,9 @@ public class AddPrivateFinalHandler extends AbstractHandler {
       
       @Override
       public boolean visit(FieldDeclaration node) {
-        fields.add(node);
+        if (!isStatic(node)) {
+          fields.add(node);
+        }
         return false;
       }
 
@@ -434,15 +438,37 @@ public class AddPrivateFinalHandler extends AbstractHandler {
             .getBodyDeclarationsProperty());
     List<Object> originalList = listRewrite.getOriginalList();
     int positionOfLastMemberFieldFound = 0;
-    for (int i = originalList.size() - 1; i >= 0; i--) {
+    // We only consider the static fields that appear before the non-static
+    // fields -- all others are ignored.
+    int positionOfLastStaticFieldBeforeMemberFieldsFound = 0;
+    for (int i = 0; i < originalList.size() - 1; i++) {
       final Object node = originalList.get(i);
       if (node instanceof FieldDeclaration) {
-        positionOfLastMemberFieldFound = i + 1;
-        break;
+        FieldDeclaration field = (FieldDeclaration)node;
+        if (isStatic(field)) {
+          if (positionOfLastMemberFieldFound == 0) {
+            positionOfLastStaticFieldBeforeMemberFieldsFound = i + 1;
+          } 
+        } else {
+          positionOfLastMemberFieldFound = i + 1;
+        }
       }
     }
-    listRewrite.insertAt(fieldDeclaration, 0, null);
-    return positionOfLastMemberFieldFound;
+    
+    listRewrite.insertAt(fieldDeclaration, positionOfLastStaticFieldBeforeMemberFieldsFound, null);
+    return Math.max(positionOfLastMemberFieldFound, positionOfLastStaticFieldBeforeMemberFieldsFound);
+  }
+
+  /**
+   * @return true if the {@code field} is static.
+   */
+  private static boolean isStatic(FieldDeclaration field) {
+    for (Object o : field.modifiers()) {
+      if (((Modifier)o).getKeyword() == ModifierKeyword.STATIC_KEYWORD) {
+        return true;
+      }
+    }
+    return false;
   }
 
   //TODO: consolidate with findAllConstructorsAndFields?
@@ -504,6 +530,19 @@ public class AddPrivateFinalHandler extends AbstractHandler {
     ExpressionStatement expression = ast.newExpressionStatement(assignment);
     ListRewrite blockRewrite =
         astRewrite.getListRewrite(block, Block.STATEMENTS_PROPERTY);
-    blockRewrite.insertFirst(expression, null);
+    
+    // We'll insert the assignment as the first thing after the super() invocation,
+    // if any
+    int positionToInsert = 0;
+    List originalList = blockRewrite.getOriginalList();
+    if (originalList.size() > 0) {
+      Object foo = originalList.get(0);
+      if (foo instanceof SuperConstructorInvocation) {
+        positionToInsert++;
+      }
+      System.out.println(foo);
+    }
+    
+    blockRewrite.insertAt(expression, positionToInsert, null);
   }
 }
