@@ -464,7 +464,8 @@ public class AddPrivateFinalHandler extends AbstractHandler {
    */
   private static boolean isStatic(FieldDeclaration field) {
     for (Object o : field.modifiers()) {
-      if (((Modifier)o).getKeyword() == ModifierKeyword.STATIC_KEYWORD) {
+      if (o instanceof Modifier && 
+          ((Modifier)o).getKeyword() == ModifierKeyword.STATIC_KEYWORD) {
         return true;
       }
     }

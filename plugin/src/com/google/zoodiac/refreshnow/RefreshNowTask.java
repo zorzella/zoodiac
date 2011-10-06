@@ -23,6 +23,7 @@ import org.eclipse.ui.PlatformUI;
 
 import java.io.File;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 class RefreshNowTask extends TimerTask {
 
@@ -49,6 +50,11 @@ class RefreshNowTask extends TimerTask {
 
       final File shutdownNowWorkspace = 
         new File (new File(root.getLocationURI()), "shutdownnow");
+
+      final File refreshNowWorkspace = 
+        new File (new File(root.getLocationURI()), "refreshnow");
+      
+      boolean refreshAll = refreshNowWorkspace.delete();
       
       if (shutdownNowWorkspace.exists()) {
         if (shutdownNowWorkspace.exists()) {
@@ -66,7 +72,7 @@ class RefreshNowTask extends TimerTask {
         for (IProject project : projects) {
           File uri = new File(project.getLocationURI());
           File refreshNow = new File(uri, "refreshnow");
-          if (refreshNow.delete()) {
+          if (refreshAll || refreshNow.delete()) {
             refreshnow(project);
           } else {
             final File shutdownNow = new File(uri, "shutdownnow");
@@ -74,6 +80,9 @@ class RefreshNowTask extends TimerTask {
               Thread deleteShutdownnowFile = new Thread(new Runnable() {
                 @Override
                 public void run() {
+                  // We delete the "shutdownnow" file as a JVM exit hook, so
+                  // its absence can be used as an indicator that the shutdown
+                  // is complete
                   shutdownNow.delete();
                 }
               });
@@ -104,13 +113,21 @@ class RefreshNowTask extends TimerTask {
     displayMessage(balloonTitle, REFRESH_NOW_COMPLETED_MESSAGE, true);
   }
 
+  private AtomicBoolean shuttingDown = new AtomicBoolean();
+  
   private void shutdownnow(File shutdownNow) {
+    
     if (firstTime) {
       shutdownNow.delete();
       return;
     }
+    // After we trigger the shutdown, let's not add more shut down Runnables
+    if (shuttingDown.getAndSet(true)) {
+      return;
+    }
     Runnable shutdownRunnable = new Runnable() {
     
+      @Override
       public void run() {
         IWorkbench workbench = PlatformUI.getWorkbench();
         workbench.saveAllEditors(false);

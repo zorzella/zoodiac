@@ -2,7 +2,7 @@ package com.google.zoodiac.sourcemenu;
 
 public class PrivateFinalTarget3 {
 
-  String foo;
+  @SuppressWarnings(value = {"unused"}) private String foo;
   String bar;
   
   public PrivateFinalTarget3(String foo, String bar) {
