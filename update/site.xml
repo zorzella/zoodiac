@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/com.google.zoodiacfeature_3.0.0.201408111433.jar" id="com.google.zoodiacfeature" version="3.0.0.201408111433">
+      <category name="com.google.zoodiaccategory"/>
+   </feature>
+   <category-def name="com.google.zoodiaccategory" label="Zoodiac"/>
+</site>
