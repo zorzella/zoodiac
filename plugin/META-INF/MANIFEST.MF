@@ -14,7 +14,9 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jface.text,
  org.eclipse.ui.workbench.texteditor,
  org.eclipse.core.filebuffers,
+ org.eclipse.ui,
  org.eclipse.ui.editors,
  org.eclipse.ltk.core.refactoring
-Eclipse-LazyStart: true
+Bundle-ActivationPolicy: lazy
 Bundle-Vendor: Luiz-Otavio Zorzella
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
