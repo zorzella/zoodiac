@@ -38,6 +38,8 @@ import org.eclipse.jdt.core.dom.VariableDeclarationFragment;
 import org.eclipse.jdt.core.dom.Modifier.ModifierKeyword;
 import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.core.dom.rewrite.ListRewrite;
+import org.eclipse.jdt.core.manipulation.CoreASTProvider;
+import org.eclipse.jdt.core.manipulation.CoreASTProvider.WAIT_FLAG;
 import org.eclipse.jdt.internal.corext.dom.NodeFinder;
 import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.jdt.internal.ui.javaeditor.ASTProvider;
@@ -148,9 +150,13 @@ public class AddPrivateFinalHandler extends AbstractHandler {
         JavaPlugin.getDefault().getWorkingCopyManager();
     ICompilationUnit compilationUnit =
         manager.getWorkingCopy(targetCompilationUnitEditor.getEditorInput());
-    CompilationUnit root =
-        JavaPlugin.getDefault().getASTProvider().getAST(compilationUnit,
-            ASTProvider.WAIT_YES, null);
+    
+    WAIT_FLAG waitFlag = CoreASTProvider.WAIT_YES;
+    CompilationUnit root = CoreASTProvider.getInstance().getAST(compilationUnit, waitFlag, null);
+    
+//    CompilationUnit root =
+//        JavaPlugin.getDefault().getASTProvider().getAST(compilationUnit,
+//            ASTProvider.WAIT_YES, null);
 
     Point selectedRange = getPosition(targetCompilationUnitEditor);
     NodeFinder finder = new NodeFinder(selectedRange.x, selectedRange.y);
