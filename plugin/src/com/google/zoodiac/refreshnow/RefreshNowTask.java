@@ -63,7 +63,7 @@ class RefreshNowTask extends TimerTask {
         final File shutdownNow = new File(uri, "shutdownnow");
         
         if (refreshAll || refreshNow.delete()) {
-          refreshnow(project);
+          refreshnow(project, shutdownNow);
         } else if (shutdownNow.exists()) {
           shutdownnow(shutdownNow);
         }
@@ -73,34 +73,47 @@ class RefreshNowTask extends TimerTask {
     firstTime = false;
   }
 
-  private void refreshnow(IProject project) {
+  private void refreshnow(IProject project, File shutdownNow) {
     RefreshNowJob job = new RefreshNowJob(project);
+    
+    if (shutdownNow.exists()) {
+      // We must delete the shutdownNow file now, otherwise run() would initiate
+      // another shutdown before the refresh job has completed.
+      // TODO: find a way to keep the file here and only delete on actual shutdown (to allow canceling a pending shutdown)
+      shutdownNow.delete();
+      
+      RefreshNowJobListener listener = new RefreshNowJobListener(this);
+      job.addJobChangeListener(listener);
+    }
+
     job.schedule();
   }
 
   private AtomicBoolean shuttingDown = new AtomicBoolean();
   
-  private void shutdownnow(File shutdownNow) {
+  public void shutdownnow(File shutdownNow) {
     if (firstTime) {
-      shutdownNow.delete();
+      deleteFileIfNonNull(shutdownNow);
       return;
     }
     
     // After we trigger the shutdown, let's not add more shut down Runnables
     if (shuttingDown.getAndSet(true)) {
-      shutdownNow.delete();
+      deleteFileIfNonNull(shutdownNow);
       return;
     }
     
-    Thread deleteShutdownnowFile = new Thread(new Runnable() {
-      @Override
-      public void run() {
-        // We delete the "shutdownnow" file as a JVM exit hook, so its absence
-        // can be used as an indicator that the shutdown is complete
-        shutdownNow.delete();
-      }
-    });
-    Runtime.getRuntime().addShutdownHook(deleteShutdownnowFile);
+    if (shutdownNow != null) {
+      Thread deleteShutdownnowFile = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          // We delete the "shutdownnow" file as a JVM exit hook, so its absence
+          // can be used as an indicator that the shutdown is complete
+          shutdownNow.delete();
+        }
+      });
+      Runtime.getRuntime().addShutdownHook(deleteShutdownnowFile);
+    }
     
     Runnable shutdownRunnable = new Runnable() {
       @Override
@@ -112,6 +125,12 @@ class RefreshNowTask extends TimerTask {
       }
     };
     Display.getDefault().asyncExec(shutdownRunnable);
+  }
+  
+  void deleteFileIfNonNull(File file) {
+    if (file != null) {
+      file.delete();
+    }
   }
   
   void logInfo(String message) {
