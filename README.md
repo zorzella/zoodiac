@@ -1,6 +1,6 @@
 # Zoodiac
 
-Update site: http://master.dl.sourceforge.net/project/zoodiac/update
+Update site: https://www.zorzella.com/zoodiac/update
 
 Here's a few of the tasks being worked on, completed or being entertained:
 
@@ -8,7 +8,7 @@ Here's a few of the tasks being worked on, completed or being entertained:
 
 Just touch a file named shutdownnow either at the root of your workspace or at the root of any project in that workspace, and Eclipse will cleanly shut down.
 
-Likewise for a refreshnow file, and Eclipse will "F5" refresh all projects (or that specific projects).
+Likewise for a refreshnow file, and Eclipse will "F5" refresh all projects (or that specific project).
 
 ## Source Menu contributions
 
