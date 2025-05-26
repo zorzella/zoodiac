@@ -1,6 +1,6 @@
 # Zoodiac
 
-Update site: http://www.zorzella.com/zoodiac/update
+Update site: https://www.zorzella.com/zoodiac/update
 
 Here's a few of the tasks being worked on, completed or being entertained:
 
