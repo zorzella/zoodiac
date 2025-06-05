@@ -53,63 +53,74 @@ class RefreshNowTask extends TimerTask {
     boolean refreshAll = refreshNowWorkspace.delete();
     
     if (shutdownNowWorkspace.exists()) {
-      if (shutdownNowWorkspace.exists()) {
-        Thread deleteShutdownnowFile = new Thread(new Runnable() {
-          @Override
-          public void run() {
-            shutdownNowWorkspace.delete();
-          }
-        });
-        Runtime.getRuntime().addShutdownHook(deleteShutdownnowFile);
-        shutdownnow(shutdownNowWorkspace);
-      }
+      shutdownnow(shutdownNowWorkspace);
     } else {
       IProject[] projects = root.getProjects();
+      
       for (IProject project : projects) {
-        File uri = new File(project.getLocationURI());
-        File refreshNow = new File(uri, "refreshnow");
+        final File uri = new File(project.getLocationURI());
+        final File refreshNow = new File(uri, "refreshnow");
+        final File shutdownNow = new File(uri, "shutdownnow");
+        
         if (refreshAll || refreshNow.delete()) {
-          refreshnow(project);
-        } else {
-          final File shutdownNow = new File(uri, "shutdownnow");
-          if (shutdownNow.exists()) {
-            Thread deleteShutdownnowFile = new Thread(new Runnable() {
-              @Override
-              public void run() {
-                // We delete the "shutdownnow" file as a JVM exit hook, so
-                // its absence can be used as an indicator that the shutdown
-                // is complete
-                shutdownNow.delete();
-              }
-            });
-            Runtime.getRuntime().addShutdownHook(deleteShutdownnowFile);
-            shutdownnow(shutdownNow);
-          }
+          refreshnow(project, shutdownNow);
+        } else if (shutdownNow.exists()) {
+          shutdownnow(shutdownNow);
         }
       }
     }
+    
     firstTime = false;
   }
 
-  private void refreshnow(IProject project) {
+  private void refreshnow(IProject project, File shutdownNow) {
     RefreshNowJob job = new RefreshNowJob(project);
+    
+    // If `shutdownNow` exists, it means there's both a "shutdownnow" and a
+    // "refreshnow" file. Let's delay shutting down until the refresh is
+    // completed.
+    if (shutdownNow.exists()) {
+      // We must delete the shutdownNow file now, otherwise run() would initiate
+      // another shutdown before the refresh job has completed.
+      // TODO: find a way to keep the file here and only delete on actual shutdown (to allow canceling a pending shutdown)
+      shutdownNow.delete();
+      
+      // Register a listener to the `RefreshNowJob` that initiates a shutdown
+      // when that job is done.
+      RefreshNowJobListener listener = new RefreshNowJobListener(this);
+      job.addJobChangeListener(listener);
+    }
+
     job.schedule();
   }
 
   private AtomicBoolean shuttingDown = new AtomicBoolean();
   
-  private void shutdownnow(File shutdownNow) {
-    
+  public void shutdownnow(File shutdownNow) {
     if (firstTime) {
-      shutdownNow.delete();
+      deleteFileIfNonNull(shutdownNow);
       return;
     }
+    
     // After we trigger the shutdown, let's not add more shut down Runnables
     if (shuttingDown.getAndSet(true)) {
+      deleteFileIfNonNull(shutdownNow);
       return;
     }
-    Runnable shutdownRunnable = new Runnable() {
     
+    if (shutdownNow != null) {
+      Thread deleteShutdownnowFile = new Thread(new Runnable() {
+        @Override
+        public void run() {
+          // We delete the "shutdownnow" file as a JVM exit hook, so its absence
+          // can be used as an indicator that the shutdown is complete
+          shutdownNow.delete();
+        }
+      });
+      Runtime.getRuntime().addShutdownHook(deleteShutdownnowFile);
+    }
+    
+    Runnable shutdownRunnable = new Runnable() {
       @Override
       public void run() {
         logInfo("Shutting down now");
@@ -119,6 +130,12 @@ class RefreshNowTask extends TimerTask {
       }
     };
     Display.getDefault().asyncExec(shutdownRunnable);
+  }
+  
+  void deleteFileIfNonNull(File file) {
+    if (file != null) {
+      file.delete();
+    }
   }
   
   void logInfo(String message) {
