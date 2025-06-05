@@ -76,12 +76,17 @@ class RefreshNowTask extends TimerTask {
   private void refreshnow(IProject project, File shutdownNow) {
     RefreshNowJob job = new RefreshNowJob(project);
     
+    // If `shutdownNow` exists, it means there's both a "shutdownnow" and a
+    // "refreshnow" file. Let's delay shutting down until the refresh is
+    // completed.
     if (shutdownNow.exists()) {
       // We must delete the shutdownNow file now, otherwise run() would initiate
       // another shutdown before the refresh job has completed.
       // TODO: find a way to keep the file here and only delete on actual shutdown (to allow canceling a pending shutdown)
       shutdownNow.delete();
       
+      // Register a listener to the `RefreshNowJob` that initiates a shutdown
+      // when that job is done.
       RefreshNowJobListener listener = new RefreshNowJobListener(this);
       job.addJobChangeListener(listener);
     }
