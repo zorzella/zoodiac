@@ -16,7 +16,8 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.core.filebuffers,
  org.eclipse.ui,
  org.eclipse.ui.editors,
- org.eclipse.ltk.core.refactoring
+ org.eclipse.ltk.core.refactoring,
+ org.eclipse.cdt.core
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: Luiz-Otavio Zorzella
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8

@@ -17,10 +17,8 @@ import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.WorkspaceJob;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 
 public class RefreshNowJob extends WorkspaceJob {
@@ -49,19 +47,19 @@ public class RefreshNowJob extends WorkspaceJob {
         true);
      
     setName(JOB_NAME_REFRESHING);
-    logInfo(JOB_NAME_REFRESHING);
+    RefreshNowTask.logInfo(JOB_NAME_REFRESHING);
     
     project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
 
     setName(JOB_NAME_BUILDING);
-    logInfo(JOB_NAME_BUILDING);
+    RefreshNowTask.logInfo(JOB_NAME_BUILDING);
    
     // TODO: make optional?
     project.build(
         IncrementalProjectBuilder.INCREMENTAL_BUILD,
         monitor);
     
-    logInfo(REFRESH_NOW_COMPLETED_MESSAGE);
+    RefreshNowTask.logInfo(REFRESH_NOW_COMPLETED_MESSAGE);
        
     RefreshNowTask.displayMessage(
         balloonTitle,
@@ -69,12 +67,6 @@ public class RefreshNowJob extends WorkspaceJob {
         true);
 
     return Status.OK_STATUS;
-  }
-  
-  // TODO: make common
-  void logInfo(String message) {
-    ILog log = Platform.getLog(getClass());
-    log.log(new Status(Status.INFO, "com.google.zoodiac", message));
   }
 
 }
