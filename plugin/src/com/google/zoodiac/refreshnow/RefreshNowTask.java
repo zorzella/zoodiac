@@ -77,8 +77,8 @@ class RefreshNowTask extends TimerTask {
     RefreshNowJob job = new RefreshNowJob(project);
     
     // If `shutdownNow` exists, it means there's both a "shutdownnow" and a
-    // "refreshnow" file. Let's delay shutting down until the refresh is
-    // completed.
+    // "refreshnow" file. Let's delay shutting down until the
+    // refresh/build/indexer is completed.
     if (shutdownNow.exists()) {
       // We must delete the shutdownNow file now, otherwise run() would initiate
       // another shutdown before the refresh job has completed.
@@ -86,7 +86,7 @@ class RefreshNowTask extends TimerTask {
       shutdownNow.delete();
       
       // Register a listener to the `RefreshNowJob` that initiates a shutdown
-      // when that job is done.
+      // when that job (and possible subsequent indexer update) is done.
       RefreshNowJobListener listener = new RefreshNowJobListener(this);
       job.addJobChangeListener(listener);
     }
@@ -138,8 +138,8 @@ class RefreshNowTask extends TimerTask {
     }
   }
   
-  void logInfo(String message) {
-    ILog log = Platform.getLog(getClass());
+  static void logInfo(String message) {
+    ILog log = Platform.getLog(RefreshNowTask.class);
     log.log(new Status(Status.INFO, "com.google.zoodiac", message));
   }
 
