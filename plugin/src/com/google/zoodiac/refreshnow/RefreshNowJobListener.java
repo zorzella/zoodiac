@@ -33,10 +33,6 @@ public class RefreshNowJobListener extends JobChangeAdapter
   
   public RefreshNowJobListener(RefreshNowTask task) {
     this.task = task;
-    // We must already register ourselves as index listener here - if we would
-    // wait until IJobChangeListener.done() we might have already missed the
-    // 'indexer idle' event, because that event could come earlier.
-    CCorePlugin.getIndexManager().addIndexerStateListener(this);
   }
   
   private void startTimer() {
@@ -67,6 +63,7 @@ public class RefreshNowJobListener extends JobChangeAdapter
   /* IJobChangeListener */
   public void done(IJobChangeEvent event) {
     jobDone = true;
+    CCorePlugin.getIndexManager().addIndexerStateListener(this);
     if (CCorePlugin.getIndexManager().isIndexerIdle()) {
       RefreshNowTask.logInfo("Job done and indexer is idle, starting timer");
       startTimer();
